@@ -127,7 +127,7 @@ def motionEntryToHomogeneousTransform(e) :
   t[3,:] = [0,0,0,1]
   return np.matrix(t)
 
-def diffTransformToRMSMotion(t, radius):
+def diffTransformToMaxMotion(t, radius):
   angleAxis = quaternionToAxisAngle(rotationMatrixToQuaternion(t[0:3, 0:3]))
   angle = angleAxis[0]
   axis = angleAxis[1:]
@@ -141,10 +141,22 @@ def diffTransformToRMSMotion(t, radius):
     np.linalg.norm(trans) * np.linalg.norm(trans)
     )
 
+def diffTransformToRMSMotion(t, radius):
+  rotMatMinusIdentity = t[0:3,0:3] - np.array([[1,0,0],[0,1,0],[0,0,1]])
+  trans = np.ravel(t[0:3,3])
+
+  return np.sqrt(
+    0.2 * radius * radius * np.trace(np.transpose(rotMatMinusIdentity) * rotMatMinusIdentity) +
+    np.dot(trans, trans)    
+    )
+
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--tr', required=True)
 parser.add_argument('--input', nargs='+', required=True)
+output_type = parser.add_mutually_exclusive_group(required=True)
+output_type.add_argument('--rms', action='store_true')
+output_type.add_argument('--max', action='store_true')
 
 args = parser.parse_args()
 
@@ -154,5 +166,12 @@ diffTransforms = [ts[1] * np.linalg.inv(ts[0]) for ts in zip(transforms[0:], tra
 
 rmsMotionScores = [diffTransformToRMSMotion(t, 100) for t in diffTransforms]
 
+maxMotionScores = [diffTransformToMaxMotion(t, 100) for t in diffTransforms]
 
-print np.mean(rmsMotionScores) * 60.0 / float(args.tr)
+
+if args.rms :
+  print np.mean(rmsMotionScores) * 60.0 / float(args.tr)
+elif args.max :
+  print np.mean(maxMotionScores) * 60.0 / float(args.tr)
+
+
