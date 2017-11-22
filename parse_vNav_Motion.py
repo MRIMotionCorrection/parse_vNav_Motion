@@ -183,9 +183,9 @@ def simplePlot(scores, measStr, radius, TR):
   ax.plot(scores)
   xlabel = 'Frame (TR=' + str(TR) + ' s)'
   ylabel = 'mm (assumed radius=' + str(radius) + ' mm)'
-  titleStr = 'MotionScore (measure=' + measStr + ')'
+  titleStr = 'vNavMotionScores (measure=' + measStr + ')'
   ax.set(xlabel=xlabel, ylabel=ylabel, title=titleStr)
-  fig.savefig('MotionScore'+measStr+'.png')
+  fig.savefig('vNavMotionScores'+measStr+'.png')
 
 
 ## Parse arguments
@@ -218,15 +218,15 @@ maxMotionScores = [diffTransformToMaxMotion(t, args.radius) for t in diffTransfo
 
 if args.rms :
   if args.verbose:
-    print 'IndividualFrameScoresRMS:', rmsMotionScores
-  print 'MeanScoreRMSPerMin:', np.mean(rmsMotionScores) * 60.0 / float(args.tr)
+    print 'vNavMotionScoresRMS:', rmsMotionScores
+  print 'MeanMotionScoreRMSPerMin:', np.mean(rmsMotionScores) * 60.0 / float(args.tr)
   if args.plot:
     simplePlot(rmsMotionScores, 'RMS', args.radius, args.tr)
 
 if args.max :
   if args.verbose:
-    print 'IndividualFrameScoresMax:', maxMotionScores
-  print 'MeanScoreMaxPerMin:', np.mean(maxMotionScores) * 60.0 / float(args.tr)
+    print 'vNavMotionScoresMax:', maxMotionScores
+  print 'MeanMotionScoreMaxPerMin:', np.mean(maxMotionScores) * 60.0 / float(args.tr)
   if args.plot:
     simplePlot(maxMotionScores, 'Max', args.radius, args.tr)
 
