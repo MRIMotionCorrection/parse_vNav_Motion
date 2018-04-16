@@ -1,4 +1,4 @@
-import dicom
+import pydicom
 import os
 import numpy as np
 import itertools
@@ -11,7 +11,7 @@ def normalize(x):
 def readRotAndTrans(paths):
   files = itertools.chain.from_iterable([glob.glob(path) for path in paths])
   
-  ds = sorted([dicom.read_file(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
+  ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
  
   head = [(np.array([1,0,0,0]),np.array([0,0,0]))]
  
