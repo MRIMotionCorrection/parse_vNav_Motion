@@ -171,8 +171,8 @@ transforms = [motionEntryToHomogeneousTransform(e) for e in readRotAndTrans(args
 diffTransforms = [ts[1] * np.linalg.inv(ts[0]) for ts in zip(transforms[0:], transforms[1:])]
 
 # Motion scores
-rmsMotionScores = [diffTransformToRMSMotion(t, args.radius) for t in diffTransforms]
-maxMotionScores = [diffTransformToMaxMotion(t, args.radius) for t in diffTransforms]
+rmsMotionScores = [diffTransformToRMSMotion(t, args.radius[0]) for t in diffTransforms]
+maxMotionScores = [diffTransformToMaxMotion(t, args.radius[0]) for t in diffTransforms]
 
 # Script output to STDOUT depending on "output_type"
 if args.mean_rms :
