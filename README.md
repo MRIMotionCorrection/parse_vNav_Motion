@@ -1,12 +1,31 @@
 # parse_vNav_Motion.py
 
-This is a small python script to parse the DICOM files from a vNavs series and convert them into an average RMS motion score. The script takes three arguments:
+This is a small python script to parse DICOM files from a vNav series and convert them into motion scores. The script takes four arguments.  The usage and help information below can be generated any time by calling it with the `-h` or `--help` flag.
 
-1. `--tr` which is the TR of the parent sequence (i.e., the MPRAGE) expressed in seconds (e.g., `--tr 2.4`);
-2. `--input` which is the list of files DICOM files that makeup the vNavs series; and
-3. either `--rms` or `--max` which decides whether the time-averaged RMS motion or time-averaged max motion is printed.
+```
+usage: parse_vNav_Motion.py [-h] --tr TR --input INPUT [INPUT ...] --radius
+                            RADIUS
+                            (--mean-rms | --mean-max | --rms-scores | --max-scores)
 
-The script assumes that you've got a version of pydicom installed. For directions on doing that, see https://github.com/pydicom/pydicom
+Parse DICOM files from a vNav series and convert them into different motion
+scores.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --tr TR               Repetition Time (TR) of the parent sequence (i.e., the
+                        MPRAGE) expressed in seconds.
+  --input INPUT [INPUT ...]
+                        A list of DICOM files that make up the vNav series (in
+                        chronological order).
+  --radius RADIUS       Assumed brain radius in millimeters for estimating
+                        rotation distance.
+  --mean-rms            Print time-averaged root mean square (RMS) motion.
+  --mean-max            Print time-averaged max motion.
+  --rms-scores          Print root mean square (RMS) motion over time.
+  --max-scores          Print max motion over time.
+```
+
+The script assumes that you've got a version of pydicom installed. For directions on doing that, see https://github.com/pydicom/pydicom.
 
 If you find bugs, please report them in the issues section of https://github.com/MRIMotionCorrection/parse_vNav_Motion
 
