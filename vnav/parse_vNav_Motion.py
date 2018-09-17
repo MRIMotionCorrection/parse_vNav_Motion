@@ -21,7 +21,7 @@ def readRotAndTrans(paths):
     ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
     motion_strings = [ str.split(x.ImageComments) for x in ds[1:] ]
 
-  return list(itertools.chain.from_iterable([head, [ (np.array(map(float, y[1:5])), map(float, y[6:9])) for y in motion_strings ] ]))
+  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in motion_strings ] ]))
 
 def angleAxisToQuaternion(a):
   w = np.cos(a[0] / 2.0)
