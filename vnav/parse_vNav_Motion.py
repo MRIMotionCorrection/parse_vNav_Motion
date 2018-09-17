@@ -156,7 +156,7 @@ def diffTransformToRMSMotion(t, radius):
     np.dot(trans, trans)
     )
 
-def getMotionScores(input, tr, radius, mean_rms=False, mean_max=False, rms_scores=False, max_scores=False):
+def parseMotion(input, tr, radius, mean_rms=False, mean_max=False, rms_scores=False, max_scores=False):
     # Transform creation and differences
     transforms = [motionEntryToHomogeneousTransform(e) for e in readRotAndTrans(input)]
     diffTransforms = [ts[1] * np.linalg.inv(ts[0]) for ts in zip(transforms[0:], transforms[1:])]
@@ -198,4 +198,4 @@ if __name__ == '__main__':
   output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
 
   args = parser.parse_args()
-  getMotionScores(args.input, args.tr, args.radius, args.mean_rms, args.mean_max, args.rms_scores, args.max_scores)
+  parseMotion(args.input, args.tr, args.radius, args.mean_rms, args.mean_max, args.rms_scores, args.max_scores)
