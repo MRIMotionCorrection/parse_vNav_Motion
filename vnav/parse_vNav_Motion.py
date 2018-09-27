@@ -19,9 +19,9 @@ def readRotAndTrans(paths):
       motion_strings = [ x.split() for x in json.load(f)['vnavNumbers'][1:] ]
   else:
     ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
-    motion_strings = [ str.split(x.ImageComments) for x in ds[1:] ]
+    motion_strings = [ str.split(x.ImageComments) if 'ImageComments' in x else None for x in ds[1:] ]
 
-  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in motion_strings ] ]))
+  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in motion_strings if y is not None] ]))
 
 def angleAxisToQuaternion(a):
   w = np.cos(a[0] / 2.0)
@@ -156,7 +156,7 @@ def diffTransformToRMSMotion(t, radius):
     np.dot(trans, trans)
     )
 
-def parseMotion(input, tr, radius, mean_rms=False, mean_max=False, rms_scores=False, max_scores=False):
+def parseMotion(input, tr, radius):
     # Transform creation and differences
     transforms = [motionEntryToHomogeneousTransform(e) for e in readRotAndTrans(input)]
     diffTransforms = [ts[1] * np.linalg.inv(ts[0]) for ts in zip(transforms[0:], transforms[1:])]
@@ -165,20 +165,12 @@ def parseMotion(input, tr, radius, mean_rms=False, mean_max=False, rms_scores=Fa
     rmsMotionScores = [diffTransformToRMSMotion(t, radius) for t in diffTransforms]
     maxMotionScores = [diffTransformToMaxMotion(t, radius) for t in diffTransforms]
 
-    # Script output to STDOUT depending on "output_type"
-    scores = []
-    if mean_rms :
-      scores.append(np.mean(rmsMotionScores) * 60.0 / tr)
-    elif mean_max :
-      scores.append(np.mean(maxMotionScores) * 60.0 / tr)
-    elif rms_scores :
-      for score in rmsMotionScores:
-        scores.append(score)
-    elif max_scores :
-      for score in maxMotionScores:
-        scores.append(score)
+    scores = {}
+    scores['mean_rms'] = np.mean(rmsMotionScores) * 60.0 / tr
+    scores['mean_max'] = np.mean(maxMotionScores) * 60.0 / tr
+    scores['rms_scores'] = rmsMotionScores
+    scores['max_scores'] = maxMotionScores
 
-    print('\n'.join(map(str, scores)))
     return scores
 
 
@@ -198,4 +190,15 @@ if __name__ == '__main__':
   output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
 
   args = parser.parse_args()
-  parseMotion(args.input, args.tr, args.radius, args.mean_rms, args.mean_max, args.rms_scores, args.max_scores)
+
+  scores = parseMotion(args.input, args.tr, args.radius)
+
+  # Script output to STDOUT depending on "output_type"
+  if args.mean_rms:
+    print(scores['mean_rms'])
+  elif args.mean_max:
+    print(scores['mean_max'])
+  elif args.rms_scores:
+    print('\n'.join(map(str, scores['rms_scores'])))
+  elif args.max_scores:
+    print('\n'.join(map(str, scores['max_scores'])))
