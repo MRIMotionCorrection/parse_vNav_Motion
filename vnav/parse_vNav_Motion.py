@@ -13,15 +13,14 @@ def readRotAndTrans(paths):
   files = list(itertools.chain.from_iterable([glob.glob(path) for path in paths]))
 
   head = [(np.array([1,0,0,0]),np.array([0,0,0]))]
-  motion_strings = []
   if len(files) == 1 and files[0].endswith('.json'):
     with open(files[0]) as f:
-      motion_strings = [ x.split() for x in json.load(f)['vnavNumbers'][1:] ]
+      imageComments = [ x.split() for x in json.load(f)['vnavNumbers'][1:] if x is not None ]
   else:
     ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
-    motion_strings = [ str.split(x.ImageComments) if 'ImageComments' in x else None for x in ds[1:] ]
+    imageComments = [ str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x ]
 
-  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in motion_strings if y is not None] ]))
+  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in imageComments] ]))
 
 def angleAxisToQuaternion(a):
   w = np.cos(a[0] / 2.0)
