@@ -13,12 +13,8 @@ def readRotAndTrans(paths):
   files = list(itertools.chain.from_iterable([glob.glob(path) for path in paths]))
 
   head = [(np.array([1,0,0,0]),np.array([0,0,0]))]
-  if len(files) == 1 and files[0].endswith('.json'):
-    with open(files[0]) as f:
-      imageComments = [ x.split() for x in json.load(f)['vnavNumbers'][1:] if x is not None ]
-  else:
-    ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
-    imageComments = [ str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x ]
+  ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
+  imageComments = [ str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x ]
 
   return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in imageComments] ]))
 
@@ -155,9 +151,9 @@ def diffTransformToRMSMotion(t, radius):
     np.dot(trans, trans)
     )
 
-def parseMotion(input, tr, radius):
+def parseMotion(rotAndTrans, tr, radius):
     # Transform creation and differences
-    transforms = [motionEntryToHomogeneousTransform(e) for e in readRotAndTrans(input)]
+    transforms = [motionEntryToHomogeneousTransform(e) for e in rotAndTrans]
     diffTransforms = [ts[1] * np.linalg.inv(ts[0]) for ts in zip(transforms[0:], transforms[1:])]
 
     # Motion scores
@@ -179,7 +175,7 @@ if __name__ == '__main__':
   parser.add_argument('--tr', required=True, type=float,
                       help='Repetition Time (TR) of the parent sequence (i.e., the MPRAGE) expressed in seconds.')
   parser.add_argument('--input', nargs='+', required=True, type=os.path.abspath,
-                      help='A list of DICOM files that make up the vNav series (in chronological order), or a BIDS JSON sidecar containing extracted motion strings')
+                      help='A list of DICOM files that make up the vNav series (in chronological order)')
   parser.add_argument('--radius', required=True, type=float,
                       help='Assumed brain radius in millimeters for estimating rotation distance.')
   output_type = parser.add_mutually_exclusive_group(required=True)
@@ -189,8 +185,8 @@ if __name__ == '__main__':
   output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
 
   args = parser.parse_args()
-
-  scores = parseMotion(args.input, args.tr, args.radius)
+  
+  scores = parseMotion(readRotAndTrans(args.input), args.tr, args.radius)
 
   # Script output to STDOUT depending on "output_type"
   if args.mean_rms:
