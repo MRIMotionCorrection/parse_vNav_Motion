@@ -13,10 +13,10 @@ def readRotAndTrans(paths):
   files = list(itertools.chain.from_iterable([glob.glob(path) for path in paths]))
 
   head = [(np.array([1,0,0,0]),np.array([0,0,0]))]
-
   ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
+  imageComments = [ str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x ]
 
-  return list(itertools.chain.from_iterable([head, [(np.array(map(float, y[1:5])), map(float, y[6:9])) for y in [str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x]]]))
+  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in imageComments] ]))
 
 def angleAxisToQuaternion(a):
   w = np.cos(a[0] / 2.0)
@@ -185,7 +185,7 @@ if __name__ == '__main__':
   output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
 
   args = parser.parse_args()
-
+  
   scores = parseMotion(readRotAndTrans(args.input), args.tr, args.radius)
 
   # Script output to STDOUT depending on "output_type"
