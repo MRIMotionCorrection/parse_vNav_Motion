@@ -1,6 +1,8 @@
 # parse_vNav_Motion.py
 
-This is a small python script to parse DICOM files from a vNav series and convert them into motion scores. The script takes four arguments.  The usage and help information below can be generated any time by calling it with the `-h` or `--help` flag.
+This is a small python package that exposes both functions for parsing/interpreting motion in vNavs DICOM files, and an executable that can handle the whole process. To install the package, use `pip install git+https://github.com/MRIMotionCorrection/parse_vNav_Motion#egg=vnav`
+
+The script takes four arguments.  The usage and help information below can be generated any time by calling it with the `-h` or `--help` flag.
 
 ```
 usage: parse_vNav_Motion.py [-h] --tr TR --input INPUT [INPUT ...] --radius
@@ -35,7 +37,7 @@ The RMS motion score is based on:
 Previous publications using this method include:
 
 - Reuter, Martin, M. Dylan Tisdall, Abid Qureshi, Randy L. Buckner, André J. W. van der Kouwe, and Bruce Fischl. “Head Motion during MRI Acquisition Reduces Gray Matter Volume and Thickness Estimates.” NeuroImage 107 (February 15, 2015): 107–15. https://doi.org/10.1016/j.neuroimage.2014.12.006.
-- Tisdall, M. Dylan, Martin Reuter, Abid Qureshi, Randy L. Buckner, Bruce Fischl, and André J. W. van der Kouwe. “Prospective Motion Correction with Volumetric Navigators (VNavs) Reduces the Bias and Variance in Brain Morphometry Induced by Subject Motion.” NeuroImage 127 (February 15, 2016): 11–22. https://doi.org/10.1016/j.neuroimage.2015.11.054.
+- Tisdall, M. Dylan, Martin Reuter, Abid Qureshi, Randy L. Buckner, Bruce Fischl, and André J. W. van der Kouwe. “Prospective Motion Correction with Volumetric Navigators (vNavs) Reduces the Bias and Variance in Brain Morphometry Induced by Subject Motion.” NeuroImage 127 (February 15, 2016): 11–22. https://doi.org/10.1016/j.neuroimage.2015.11.054.
 
 which both used a radius of 64 mm and the --mean-rms option to compute motion scores for each scan.
 
