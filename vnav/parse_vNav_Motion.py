@@ -169,31 +169,63 @@ def parseMotion(rotAndTrans, tr, radius):
     return scores
 
 
+def main():
+    parser = argparse.ArgumentParser(
+        description=
+        'Parse DICOM files from a vNav series and convert them into different motion scores.'
+    )
+
+    parser.add_argument(
+        '--tr',
+        required=True,
+        type=float,
+        help=
+        'Repetition Time (TR) of the parent sequence (i.e., the MPRAGE) expressed in seconds.'
+    )
+    parser.add_argument(
+        '--input',
+        nargs='+',
+        required=True,
+        type=os.path.abspath,
+        help=
+        'A list of DICOM files that make up the vNav series (in chronological order)'
+    )
+    parser.add_argument(
+        '--radius',
+        required=True,
+        type=float,
+        help=
+        'Assumed brain radius in millimeters for estimating rotation distance.'
+    )
+    output_type = parser.add_mutually_exclusive_group(required=True)
+    output_type.add_argument(
+        '--mean-rms',
+        action='store_true',
+        help='Print time-averaged root mean square (RMS) motion.')
+    output_type.add_argument('--mean-max',
+                             action='store_true',
+                             help='Print time-averaged max motion.')
+    output_type.add_argument(
+        '--rms-scores',
+        action='store_true',
+        help='Print root mean square (RMS) motion over time.')
+    output_type.add_argument('--max-scores',
+                             action='store_true',
+                             help='Print max motion over time.')
+
+    args = parser.parse_args()
+
+    scores = parseMotion(readRotAndTrans(args.input), args.tr, args.radius)
+
+    # Script output to STDOUT depending on "output_type"
+    if args.mean_rms:
+        print(scores['mean_rms'])
+    elif args.mean_max:
+        print(scores['mean_max'])
+    elif args.rms_scores:
+        print('\n'.join(map(str, scores['rms_scores'])))
+    elif args.max_scores:
+        print('\n'.join(map(str, scores['max_scores'])))
+
 if __name__ == '__main__':
-  parser = argparse.ArgumentParser(description='Parse DICOM files from a vNav series and convert them into different motion scores.')
-
-  parser.add_argument('--tr', required=True, type=float,
-                      help='Repetition Time (TR) of the parent sequence (i.e., the MPRAGE) expressed in seconds.')
-  parser.add_argument('--input', nargs='+', required=True, type=os.path.abspath,
-                      help='A list of DICOM files that make up the vNav series (in chronological order)')
-  parser.add_argument('--radius', required=True, type=float,
-                      help='Assumed brain radius in millimeters for estimating rotation distance.')
-  output_type = parser.add_mutually_exclusive_group(required=True)
-  output_type.add_argument('--mean-rms', action='store_true', help='Print time-averaged root mean square (RMS) motion.')
-  output_type.add_argument('--mean-max', action='store_true', help='Print time-averaged max motion.')
-  output_type.add_argument('--rms-scores', action='store_true', help='Print root mean square (RMS) motion over time.')
-  output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
-
-  args = parser.parse_args()
-  
-  scores = parseMotion(readRotAndTrans(args.input), args.tr, args.radius)
-
-  # Script output to STDOUT depending on "output_type"
-  if args.mean_rms:
-    print(scores['mean_rms'])
-  elif args.mean_max:
-    print(scores['mean_max'])
-  elif args.rms_scores:
-    print('\n'.join(map(str, scores['rms_scores'])))
-  elif args.max_scores:
-    print('\n'.join(map(str, scores['max_scores'])))
+    main()
