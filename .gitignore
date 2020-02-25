@@ -1,1 +1,6 @@
 venv/
+.DS_Store
+*.pyc
+__pycache__
+*.egg-info*
+*.swp
