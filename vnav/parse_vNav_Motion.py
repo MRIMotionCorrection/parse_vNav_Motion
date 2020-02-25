@@ -10,13 +10,48 @@ def normalize(x):
   return x / np.sqrt(np.dot(x,x))
 
 def readRotAndTrans(paths):
-  files = list(itertools.chain.from_iterable([glob.glob(path) for path in paths]))
-
-  head = [(np.array([1,0,0,0]),np.array([0,0,0]))]
-  ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
-  imageComments = [ str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x ]
-
+  imageComments = readImageComments(paths)
+  head = [(np.array([1, 0, 0, 0]), np.array([0, 0, 0]))]
   return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in imageComments] ]))
+
+
+def readImageComments(paths):
+  sidecar_path = paths[0]
+  if sidecar_path.endswith(('.json', '.nii', '.nii.gz')):
+    if len(paths) > 1:
+      raise ValueError('Only a single input is allowed if using json')
+
+    # Allow passing _either_ nifti or json (redirect if required, harmless if json already)
+    sidecar_path = sidecar_path.replace('.nii.gz', '.json')
+    sidecar_path = sidecar_path.replace('.nii', '.json')
+    imageComments = readImageCommentsFromJson(sidecar_path)
+  else:
+    imageComments = readImageCommentsFromDicom(paths)
+
+  return imageComments
+
+
+def readImageCommentsFromDicom(paths):
+  files = list(
+    itertools.chain.from_iterable([glob.glob(path) for path in paths]))
+  ds = sorted([pydicom.dcmread(x) for x in files],
+              key=lambda dcm: dcm.AcquisitionNumber)
+  imageComments = [
+    str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x
+  ]
+  return imageComments
+
+
+def readImageCommentsFromJson(path):
+  with open(path, 'r') as f:
+    img_info = json.loads(f.read())
+  if 'ImageComments' not in img_info.keys():
+    raise ValueError("'ImageComments' key not found in json.")
+  imageComments = [line.split('_') for line in img_info['ImageComments'][1:]]
+  if len(imageComments[0]) == 1:
+      raise RuntimeError('Image comments may not have been split successfully.')
+  return imageComments
+
 
 def angleAxisToQuaternion(a):
   w = np.cos(a[0] / 2.0)
@@ -185,7 +220,7 @@ if __name__ == '__main__':
   output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
 
   args = parser.parse_args()
-  
+
   scores = parseMotion(readRotAndTrans(args.input), args.tr, args.radius)
 
   # Script output to STDOUT depending on "output_type"
