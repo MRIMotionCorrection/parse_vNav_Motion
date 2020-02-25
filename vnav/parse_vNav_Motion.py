@@ -1,3 +1,11 @@
+# Author: Dylan Tisdall
+# https://github.com/MRIMotionCorrection/parse_vNav_Motion
+#
+# Additions 11/22/2017 by Michael Harms
+#   Options for plots and intermediate outputs
+#   Allowed both --rms and --max simultaneously as input args
+#   Added 'radius' as optional input arg
+#   Added comments to help navigate scriptimport pydicom
 import pydicom
 import os
 import numpy as np
@@ -6,17 +14,33 @@ import glob
 import argparse
 import json
 
+from pprint import pprint
+
+try:
+    import matplotlib.pyplot as plt
+    matplotlib_present = True
+except ImportError:
+    matplotlib_present = False
+
+
 def normalize(x):
   return x / np.sqrt(np.dot(x,x))
 
-def readRotAndTrans(paths):
+def readRotAndTrans(paths, verbose=False):
   files = list(itertools.chain.from_iterable([glob.glob(path) for path in paths]))
 
   head = [(np.array([1,0,0,0]),np.array([0,0,0]))]
+  # Sort DICOMs by AcquisitionNumber (important!)
   ds = sorted([pydicom.dcmread(x) for x in files], key=lambda dcm: dcm.AcquisitionNumber)
   imageComments = [ str.split(x.ImageComments) for x in ds[1:] if 'ImageComments' in x ]
 
-  return list(itertools.chain.from_iterable([head, [ (np.array(list(map(float, y[1:5]))), list(map(float, y[6:9]))) for y in imageComments] ]))
+  quaternions = list(itertools.chain.from_iterable([head, [(np.array(map(float, y[1:5])), map(float, y[6:9])) for y in [str.split(x.ImageComments) for x in ds[1:]]]]))
+
+  if verbose:
+    print('Quaternions:')
+    pprint(quaternions)
+
+  return quaternions
 
 def angleAxisToQuaternion(a):
   w = np.cos(a[0] / 2.0)
@@ -128,6 +152,10 @@ def motionEntryToHomogeneousTransform(e) :
   t[3,:] = [0,0,0,1]
   return np.matrix(t)
 
+# MaxMotion measure is similar to the motion score in Tisdall et al. 2012 (MRM, 68:389-399),
+# but not identical. In particular, the definition of t_rotmax here is the same as the
+# computation in Eq. (1) of the paper, but Eq. (3) from the paper (the final score)
+# would be simply: score = t_rotmax + np.linalg.norm(trans)
 def diffTransformToMaxMotion(t, radius):
   angleAxis = quaternionToAxisAngle(rotationMatrixToQuaternion(t[0:3, 0:3]))
   angle = angleAxis[0]
@@ -142,6 +170,10 @@ def diffTransformToMaxMotion(t, radius):
     (np.linalg.norm(trans) * np.linalg.norm(trans))
     )
 
+# RMSmotion measure based on:
+# Jenkinson, M., 1999. Measuring transformation error by RMS deviation.
+# Technical Report No. TR99MJ1. FMRIB, Oxford
+# http://www.fmrib.ox.ac.uk/datasets/techrep/tr99mj1/tr99mj1/tr99mj1.html
 def diffTransformToRMSMotion(t, radius):
   rotMatMinusIdentity = t[0:3,0:3] - np.array([[1,0,0],[0,1,0],[0,0,1]])
   trans = np.ravel(t[0:3,3])
@@ -151,7 +183,7 @@ def diffTransformToRMSMotion(t, radius):
     np.dot(trans, trans)
     )
 
-def parseMotion(rotAndTrans, tr, radius):
+def parseMotion(rotAndTrans, tr, radius, plot=False):
     # Transform creation and differences
     transforms = [motionEntryToHomogeneousTransform(e) for e in rotAndTrans]
     diffTransforms = [ts[1] * np.linalg.inv(ts[0]) for ts in zip(transforms[0:], transforms[1:])]
@@ -166,27 +198,45 @@ def parseMotion(rotAndTrans, tr, radius):
     scores['rms_scores'] = rmsMotionScores
     scores['max_scores'] = maxMotionScores
 
+    if plot and matplotlib_present:
+        simplePlot(rmsMotionScores, 'RMS', radius, tr)
+
     return scores
 
 
+def simplePlot(scores, measStr, radius, TR):
+  fig, ax = plt.subplots()
+  ax.plot(scores)
+  xlabel = 'Frame (TR=' + str(TR) + ' s)'
+  ylabel = 'mm (assumed radius=' + str(radius) + ' mm)'
+  titleStr = 'vNavMotionScores (measure=' + measStr + ')'
+  ax.set(xlabel=xlabel, ylabel=ylabel, title=titleStr)
+  fig.savefig('vNavMotionScores'+measStr+'.png')
+
+
+## Parse arguments
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Parse DICOM files from a vNav series and convert them into different motion scores.')
 
-  parser.add_argument('--tr', required=True, type=float,
+  group1 = parser.add_argument_group('required')
+  group1.add_argument('--tr', required=True, type=float,
                       help='Repetition Time (TR) of the parent sequence (i.e., the MPRAGE) expressed in seconds.')
-  parser.add_argument('--input', nargs='+', required=True, type=os.path.abspath,
+  group1.add_argument('--input', nargs='+', required=True, type=os.path.abspath,
                       help='A list of DICOM files that make up the vNav series (in chronological order)')
-  parser.add_argument('--radius', required=True, type=float,
-                      help='Assumed brain radius in millimeters for estimating rotation distance.')
-  output_type = parser.add_mutually_exclusive_group(required=True)
+  output_type = parser.add_argument_group('measure (at least one required)')
   output_type.add_argument('--mean-rms', action='store_true', help='Print time-averaged root mean square (RMS) motion.')
   output_type.add_argument('--mean-max', action='store_true', help='Print time-averaged max motion.')
   output_type.add_argument('--rms-scores', action='store_true', help='Print root mean square (RMS) motion over time.')
   output_type.add_argument('--max-scores', action='store_true', help='Print max motion over time.')
 
+  parser.add_argument('--radius', type=float, default=100,
+                      help='radius (mm) of assumed sphere (default: %(default)s)')
+  parser.add_argument('--plot', help='output plot of chosen measure across frames', action='store_true')
+  parser.add_argument('-v','--verbose', help='increase output verbosity', action='store_true')
+
   args = parser.parse_args()
-  
-  scores = parseMotion(readRotAndTrans(args.input), args.tr, args.radius)
+
+  scores = parseMotion(readRotAndTrans(args.input, args.verbose), args.tr, args.radius, plot=args.plot)
 
   # Script output to STDOUT depending on "output_type"
   if args.mean_rms:
